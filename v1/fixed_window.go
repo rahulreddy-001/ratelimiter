@@ -28,13 +28,13 @@ func NewFixedWindow(
 	}
 }
 
-type FixedWindowState struct {
+type fixedWindowState struct {
 	TokensConsumed int   `json:"tokens_consumed"`
 	UpdatedAt      int64 `json:"updated_at"`
 }
 
 func (tb *FixedWindow) Consume(key string, count int) bool {
-	var state *FixedWindowState
+	var state *fixedWindowState
 	var current int64 = time.Now().UnixNano()
 
 	stateRaw, err := tb.rdb.HGet("ratelimiter", key).Result()
@@ -49,14 +49,14 @@ func (tb *FixedWindow) Consume(key string, count int) bool {
 	}
 
 	if state == nil {
-		state = &FixedWindowState{
+		state = &fixedWindowState{
 			TokensConsumed: 0,
 			UpdatedAt:      current,
 		}
 	}
 
-	if state.UpdatedAt+tb.Interval.Microseconds() <= current {
-		state = &FixedWindowState{
+	if state.UpdatedAt+tb.Interval.Nanoseconds() <= current {
+		state = &fixedWindowState{
 			TokensConsumed: 0,
 			UpdatedAt:      current,
 		}
@@ -67,7 +67,7 @@ func (tb *FixedWindow) Consume(key string, count int) bool {
 	if tokens < count {
 		return false
 	}
-	state = &FixedWindowState{
+	state = &fixedWindowState{
 		TokensConsumed: state.TokensConsumed + count,
 		UpdatedAt:      current,
 	}

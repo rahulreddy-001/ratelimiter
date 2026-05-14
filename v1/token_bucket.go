@@ -31,13 +31,13 @@ func NewTokenBucket(
 	}
 }
 
-type State struct {
+type tokenBucketState struct {
 	TokensRemaining int   `json:"tokens_remaining"`
 	UpdatedAt       int64 `json:"updated_at"`
 }
 
 func (tb *TokenBucket) Consume(key string, count int) bool {
-	var state *State
+	var state *tokenBucketState
 	var current int64 = time.Now().UnixNano()
 
 	stateRaw, err := tb.rdb.HGet("ratelimiter", key).Result()
@@ -52,7 +52,7 @@ func (tb *TokenBucket) Consume(key string, count int) bool {
 	}
 
 	if state == nil {
-		state = &State{
+		state = &tokenBucketState{
 			TokensRemaining: tb.BucketSize,
 			UpdatedAt:       current,
 		}
@@ -64,7 +64,7 @@ func (tb *TokenBucket) Consume(key string, count int) bool {
 	if tokens < count {
 		return false
 	}
-	state = &State{
+	state = &tokenBucketState{
 		TokensRemaining: tokens - count,
 		UpdatedAt:       current,
 	}

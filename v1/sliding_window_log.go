@@ -28,12 +28,12 @@ func NewSlidingWindowLog(
 	}
 }
 
-type SlidingWindowLogState struct {
+type slidingWindowLogState struct {
 	ConsumedTS []int64 `json:"consumed_ts"`
 }
 
 func (tb *SlidingWindowLog) Consume(key string, count int) bool {
-	var state *SlidingWindowLogState
+	var state *slidingWindowLogState
 	var current int64 = time.Now().UnixNano()
 
 	stateRaw, err := tb.rdb.HGet("ratelimiter", key).Result()
@@ -48,7 +48,7 @@ func (tb *SlidingWindowLog) Consume(key string, count int) bool {
 	}
 
 	if state == nil {
-		state = &SlidingWindowLogState{
+		state = &slidingWindowLogState{
 			ConsumedTS: []int64{},
 		}
 	}

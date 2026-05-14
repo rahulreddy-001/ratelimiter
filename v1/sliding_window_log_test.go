@@ -1,11 +1,12 @@
 package v1
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 )
 
 func setupSlidingWindowLog(
@@ -37,7 +38,7 @@ func TestSlidingWindowLog_ConsumeWithinLimit(t *testing.T) {
 	)
 
 	for range 5 {
-		if !sw.Consume("user-1", 1) {
+		if !sw.Consume(context.Background(), "user-1", 1) {
 			t.Fatal("expected consume to succeed")
 		}
 	}
@@ -51,12 +52,12 @@ func TestSlidingWindowLog_RejectWhenLimitExceeded(t *testing.T) {
 	)
 
 	for range 5 {
-		if !sw.Consume("user-1", 1) {
+		if !sw.Consume(context.Background(), "user-1", 1) {
 			t.Fatal("expected consume to succeed")
 		}
 	}
 
-	if sw.Consume("user-1", 1) {
+	if sw.Consume(context.Background(), "user-1", 1) {
 		t.Fatal("expected consume to fail")
 	}
 }
@@ -69,18 +70,18 @@ func TestSlidingWindowLog_WindowSlides(t *testing.T) {
 	)
 
 	for range 5 {
-		if !sw.Consume("user-1", 1) {
+		if !sw.Consume(context.Background(), "user-1", 1) {
 			t.Fatal("expected consume to succeed")
 		}
 	}
 
-	if sw.Consume("user-1", 1) {
+	if sw.Consume(context.Background(), "user-1", 1) {
 		t.Fatal("expected consume to fail")
 	}
 
 	time.Sleep(1100 * time.Millisecond)
 
-	if !sw.Consume("user-1", 1) {
+	if !sw.Consume(context.Background(), "user-1", 1) {
 		t.Fatal("expected consume after window slide")
 	}
 }
@@ -93,16 +94,16 @@ func TestSlidingWindowLog_DifferentKeys(t *testing.T) {
 	)
 
 	for range 5 {
-		if !sw.Consume("user-1", 1) {
+		if !sw.Consume(context.Background(), "user-1", 1) {
 			t.Fatal("expected user-1 consume to succeed")
 		}
 	}
 
-	if sw.Consume("user-1", 1) {
+	if sw.Consume(context.Background(), "user-1", 1) {
 		t.Fatal("expected user-1 limit exceeded")
 	}
 
-	if !sw.Consume("user-2", 1) {
+	if !sw.Consume(context.Background(), "user-2", 1) {
 		t.Fatal("expected user-2 to have separate window")
 	}
 }
@@ -115,7 +116,7 @@ func TestSlidingWindowLog_ExactLimit(t *testing.T) {
 	)
 
 	for range 5 {
-		if !sw.Consume("user-1", 1) {
+		if !sw.Consume(context.Background(), "user-1", 1) {
 			t.Fatal("expected consume within exact limit")
 		}
 	}
@@ -128,11 +129,11 @@ func TestSlidingWindowLog_OverflowByOne(t *testing.T) {
 		time.Second,
 	)
 
-	if !sw.Consume("user-1", 1) {
+	if !sw.Consume(context.Background(), "user-1", 1) {
 		t.Fatal("expected first consume")
 	}
 
-	if sw.Consume("user-1", 1) {
+	if sw.Consume(context.Background(), "user-1", 1) {
 		t.Fatal("expected second consume to fail")
 	}
 }
@@ -144,20 +145,20 @@ func TestSlidingWindowLog_OldEntriesRemoved(t *testing.T) {
 		time.Second,
 	)
 
-	if !sw.Consume("user-1", 1) {
+	if !sw.Consume(context.Background(), "user-1", 1) {
 		t.Fatal("expected first consume")
 	}
 
 	time.Sleep(1100 * time.Millisecond)
 
-	if !sw.Consume("user-1", 1) {
+	if !sw.Consume(context.Background(), "user-1", 1) {
 		t.Fatal("expected second consume")
 	}
 
 	time.Sleep(1100 * time.Millisecond)
 
 	// first timestamp should now be gone
-	if !sw.Consume("user-1", 1) {
+	if !sw.Consume(context.Background(), "user-1", 1) {
 		t.Fatal("expected old timestamps cleaned")
 	}
 }

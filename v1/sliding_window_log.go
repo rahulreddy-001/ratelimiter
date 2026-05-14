@@ -1,10 +1,11 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 )
 
 var _ Ratelimiter = &SlidingWindowLog{}
@@ -32,11 +33,11 @@ type slidingWindowLogState struct {
 	ConsumedTS []int64 `json:"consumed_ts"`
 }
 
-func (tb *SlidingWindowLog) Consume(key string, count int) bool {
+func (tb *SlidingWindowLog) Consume(ctx context.Context, key string, count int) bool {
 	var state *slidingWindowLogState
 	var current int64 = time.Now().UnixNano()
 
-	stateRaw, err := tb.rdb.HGet("ratelimiter", key).Result()
+	stateRaw, err := tb.rdb.HGet(ctx, "ratelimiter", key).Result()
 	if err != nil && err != redis.Nil {
 		return true
 	}
@@ -70,6 +71,6 @@ func (tb *SlidingWindowLog) Consume(key string, count int) bool {
 	}
 
 	stateEncoded, _ := json.Marshal(state)
-	tb.rdb.HSet("ratelimiter", key, stateEncoded)
+	tb.rdb.HSet(ctx, "ratelimiter", key, stateEncoded)
 	return true
 }

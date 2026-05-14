@@ -41,7 +41,7 @@ func (tb *LeakingBucket) Consume(ctx context.Context, key string, count int) boo
 	var state *leakingBucketState
 	var current int64 = time.Now().UnixNano()
 
-	stateRaw, err := tb.rdb.HGet(ctx, "ratelimiter", key).Result()
+	stateRaw, err := tb.rdb.Get(ctx, rateLimiterKey(key)).Result()
 	if err != nil && err != redis.Nil {
 		return true
 	}
@@ -69,6 +69,14 @@ func (tb *LeakingBucket) Consume(ctx context.Context, key string, count int) boo
 	state.UpdatedAt = current
 
 	stateEncoded, _ := json.Marshal(state)
-	tb.rdb.HSet(ctx, "ratelimiter", key, stateEncoded)
+	tb.rdb.Set(ctx, rateLimiterKey(key), stateEncoded, tb.ttl(state.ConsumedCount))
 	return true
+}
+
+func (tb *LeakingBucket) ttl(consumedCount int) time.Duration {
+
+	if tb.ConsumeRate <= 0 || consumedCount <= 0 {
+		return 0
+	}
+	return time.Duration(consumedCount) * tb.ConsumeUnit / time.Duration(tb.ConsumeRate)
 }

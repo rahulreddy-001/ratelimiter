@@ -41,7 +41,7 @@ func (tb *TokenBucket) Consume(ctx context.Context, key string, count int) bool 
 	var state *tokenBucketState
 	var current int64 = time.Now().UnixNano()
 
-	stateRaw, err := tb.rdb.HGet(ctx, "ratelimiter", key).Result()
+	stateRaw, err := tb.rdb.Get(ctx, rateLimiterKey(key)).Result()
 	if err != nil && err != redis.Nil {
 		return true
 	}
@@ -71,6 +71,15 @@ func (tb *TokenBucket) Consume(ctx context.Context, key string, count int) bool 
 	}
 
 	stateEncoded, _ := json.Marshal(state)
-	tb.rdb.HSet(ctx, "ratelimiter", key, stateEncoded)
+	tb.rdb.Set(ctx, rateLimiterKey(key), stateEncoded, tb.ttl(state.TokensRemaining))
 	return true
+}
+
+func (tb *TokenBucket) ttl(tokensRemaining int) time.Duration {
+	if tb.RefillRate <= 0 || tokensRemaining >= tb.BucketSize {
+		return 0
+	}
+
+	tokensToRefill := tb.BucketSize - tokensRemaining
+	return time.Duration(tokensToRefill) * tb.RateUnit / time.Duration(tb.RefillRate)
 }

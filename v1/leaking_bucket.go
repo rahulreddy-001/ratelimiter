@@ -7,6 +7,8 @@ import (
 	"github.com/go-redis/redis"
 )
 
+var _ Ratelimiter = &LeakingBucket{}
+
 type LeakingBucket struct {
 	BucketSize  int
 	ConsumeRate int

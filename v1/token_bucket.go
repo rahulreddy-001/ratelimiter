@@ -7,6 +7,8 @@ import (
 	"github.com/go-redis/redis"
 )
 
+var _ Ratelimiter = &TokenBucket{}
+
 type TokenBucket struct {
 	BucketSize int
 	RefillRate int

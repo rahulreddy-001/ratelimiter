@@ -7,6 +7,8 @@ import (
 	"github.com/go-redis/redis"
 )
 
+var _ Ratelimiter = &FixedWindow{}
+
 type FixedWindow struct {
 	Limit    int
 	Interval time.Duration

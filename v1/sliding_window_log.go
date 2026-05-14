@@ -7,6 +7,8 @@ import (
 	"github.com/go-redis/redis"
 )
 
+var _ Ratelimiter = &SlidingWindowLog{}
+
 type SlidingWindowLog struct {
 	Limit    int
 	Interval time.Duration
@@ -30,7 +32,7 @@ type SlidingWindowLogState struct {
 	ConsumedTS []int64 `json:"consumed_ts"`
 }
 
-func (tb *SlidingWindowLog) Consume(key string) bool {
+func (tb *SlidingWindowLog) Consume(key string, count int) bool {
 	var state *SlidingWindowLogState
 	var current int64 = time.Now().UnixNano()
 
@@ -60,10 +62,12 @@ func (tb *SlidingWindowLog) Consume(key string) bool {
 	}
 	state.ConsumedTS = state.ConsumedTS[idx:]
 
-	if len(state.ConsumedTS)+1 > tb.Limit {
+	if len(state.ConsumedTS)+count > tb.Limit {
 		return false
 	}
-	state.ConsumedTS = append(state.ConsumedTS, current)
+	for _ = range count {
+		state.ConsumedTS = append(state.ConsumedTS, current)
+	}
 
 	stateEncoded, _ := json.Marshal(state)
 	tb.rdb.HSet("ratelimiter", key, stateEncoded)
